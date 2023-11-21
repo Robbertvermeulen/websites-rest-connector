@@ -19,14 +19,13 @@ define('WRC_PLUGIN_VERSION', '1.0.0');
 define('WRC_PLUGIN_DIR', plugin_dir_path( __FILE__ ));
 define('WRC_PLUGIN_URL', plugin_dir_url( __FILE__ ));
 
+require __DIR__ . '/vendor/autoload.php';
+
 class Websites_REST_Connector_Plugin {
 
     private static $instance = null;
 
     private function __construct() {
-
-        // On plugin activation
-        register_activation_hook(__FILE__, [$this, 'handle_activation']);
 
         // include WRC_PLUGIN_DIR . 'includes/admin.php';
         include WRC_PLUGIN_DIR . 'includes/rest-connector.php';
@@ -40,8 +39,6 @@ class Websites_REST_Connector_Plugin {
         return self::$instance;
     }
 
-    public function handle_activation() {
-    }  
 }
 
 Websites_REST_Connector_Plugin::get_instance();

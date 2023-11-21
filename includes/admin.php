@@ -63,6 +63,9 @@ class Admin {
      * Registers the plugin's settings.
      */
     public function register_settings() {
+
+        $mode = Settings::get_mode();
+
         register_setting(
             'websites_rest_connector_settings',
             'websites_rest_connector_settings',
@@ -77,28 +80,40 @@ class Admin {
         );
 
         add_settings_field(
-            'wrc_api_url',
-            'API URL',
-            array( $this, 'api_url_callback' ),
+            'wrc_mode',
+            'Mode',
+            array( $this, 'mode_callback' ),
             'websites_rest_connector_settings',
             'websites_rest_connector_section'
         );
 
-        add_settings_field(
-            'wrc_api_username',
-            'API Username',
-            array( $this, 'api_username_callback' ),
-            'websites_rest_connector_settings',
-            'websites_rest_connector_section'
-        );
+        if ($mode === 'send') {
 
-        add_settings_field(
-            'wrc_api_password',
-            'API Password',
-            array( $this, 'api_password_callback' ),
-            'websites_rest_connector_settings',
-            'websites_rest_connector_section'
-        );
+            add_settings_field(
+                'wrc_api_url',
+                'API URL',
+                array( $this, 'api_url_callback' ),
+                'websites_rest_connector_settings',
+                'websites_rest_connector_section'
+            );
+
+            add_settings_field(
+                'wrc_api_username',
+                'API Username',
+                array( $this, 'api_username_callback' ),
+                'websites_rest_connector_settings',
+                'websites_rest_connector_section'
+            );
+
+            add_settings_field(
+                'wrc_api_password',
+                'API Password',
+                array( $this, 'api_password_callback' ),
+                'websites_rest_connector_settings',
+                'websites_rest_connector_section'
+            );
+
+        }
     }
 
     /**
@@ -108,14 +123,17 @@ class Admin {
      * @return array The sanitized settings.
      */
     public function sanitize_settings( $input ) {
-        $sanitized_input = array();
-        if ( isset( $input['wrc_api_username'] ) ) {
+        $sanitized_input = Settings::get_all();
+        if (isset( $input['wrc_mode'] ) ) {
+            $sanitized_input['wrc_mode'] = sanitize_text_field( $input['wrc_mode'] );
+        }
+        if (isset( $input['wrc_api_username'] ) ) {
             $sanitized_input['wrc_api_username'] = sanitize_text_field( $input['wrc_api_username'] );
         }
-        if ( isset( $input['wrc_api_password'] ) ) {
+        if (isset( $input['wrc_api_password'] ) ) {
             $sanitized_input['wrc_api_password'] = sanitize_text_field( $input['wrc_api_password'] );
         }
-        if ( isset( $input['wrc_api_url'] ) ) {
+        if (isset( $input['wrc_api_url'] ) ) {
             $sanitized_input['wrc_api_url'] = sanitize_text_field( $input['wrc_api_url'] );
         }
         return $sanitized_input;
@@ -126,6 +144,19 @@ class Admin {
      */
     public function print_section_info() {
         print 'Enter other WordPress\'s website REST API settings to connect:';
+    }
+
+    /**
+     * Callback function for the Mode field.
+     */
+    public function mode_callback() {
+        $mode = Settings::get_mode();
+        ?>
+        <select id="wrc_mode" name="websites_rest_connector_settings[wrc_mode]">
+            <option value="receive" <?php selected( $mode, 'receive' ); ?>>Receive</option>
+            <option value="send" <?php selected( $mode, 'send' ); ?>>Send</option>
+        </select>
+        <?php
     }
 
     /**
