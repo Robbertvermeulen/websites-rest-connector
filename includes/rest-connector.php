@@ -55,9 +55,13 @@ class Rest_Connector {
      * Register woocommerce actions
      */
     public function register_woocommerce_hooks() {
-        add_action('pre_post_update', [$this, 'capture_pre_saved_product_data']);
-        add_action('save_post', [$this, 'send_product_data_to_rest_api'], 10, 2);
-        add_action('rest_api_init', [$this, 'register_product_rest_routes']);
+        $mode = Settings::get_mode();
+        if ($mode === 'receive') {
+            add_action('rest_api_init', [$this, 'register_product_rest_routes']);
+        } else {
+            add_action('pre_post_update', [$this, 'capture_pre_saved_product_data']);
+            add_action('save_post', [$this, 'send_product_data_to_rest_api'], 10, 2);
+        }
     }
 
     /**
@@ -129,15 +133,23 @@ class Rest_Connector {
             if (!$this->is_right_post_save($product_id)) 
                 return;
 
+            // Avoid sending posts
             if ($post->post_type !== 'product') 
                 return;
             
+            // Get changed data only
             $data = $this->prepare_product_data($product_id);
             if (!$data) throw new \Exception('No data to send');
-            delete_transient('previous_product_version_' . $product_id);
+
+            // Send data to REST API
             $this->send_data_to_rest_api('/wrc/v1/receive-product-data', $data);
+            
+            // Delete transient with previous version of product data
+            delete_transient('previous_product_version_' . $product_id);
+
+            // Reset product sent flag
             delete_post_meta($product_id, 'wrc_product_sent');
-        
+
         } catch (\Exception $e) {
             error_log($e->getMessage());
         }
@@ -245,7 +257,8 @@ class Rest_Connector {
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Basic ' . base64_encode($this->api_username . ':' . $this->api_password)
             ],
-            'body' => json_encode($data)
+            'body' => json_encode($data),
+            'timeout' => 180,
         ];
 
         // If local development, disable ssl verification
@@ -253,6 +266,12 @@ class Rest_Connector {
             $args['sslverify'] = false;
         }
         $response = wp_remote_post($request_url, $args);
+
+        // Check for errors
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            throw new \Exception($error_message);
+        } 
         return $response;
     }
 
